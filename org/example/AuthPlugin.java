@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -37,7 +36,9 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          return new File(dir, fileName);
       } catch (URISyntaxException e) {
          throw new RuntimeException("Failed to determine JAR file location.", e);
+
       }
+
    }
 
    @EventHandler
@@ -64,6 +65,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    private void loadValidRooms() {
       validRooms.clear();
       File roomsFile = getDataFile("filtered_first_names_rooms.csv");
+
       if (!roomsFile.exists()) {
          getLogger().severe("Rooms file not found: " + roomsFile.getAbsolutePath());
          return;
@@ -85,6 +87,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
 
    private void sendAuthMessage(Player player) {
       player.sendMessage(ChatColor.YELLOW + "Podaj pok\u00F3j oraz imie, np. 1010B2 Kamil");
+
    }
 
    @EventHandler
@@ -116,6 +119,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
                }
             }
          }, 20L, 20L).getTaskId();
+
          authTaskMap.put(player.getUniqueId(), taskId);
       }
 

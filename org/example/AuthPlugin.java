@@ -21,12 +21,13 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class AuthPlugin extends JavaPlugin implements Listener {
    private Set<UUID> authenticatedPlayers = new HashSet();
    private Map<UUID, AuthPlugin.AuthData> pendingAuth = new HashMap();
-   private Map<String, String> residents = new HashMap();
+   private Set<String> validRooms = new HashSet();
    private Map<UUID, Integer> authTaskMap = new HashMap();
 
    private File getCsvFile(String fileName) {
@@ -37,6 +38,17 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       } catch (URISyntaxException var4) {
          throw new RuntimeException("Failed to determine JAR file location.", var4);
       }
+   }
+
+   @EventHandler
+   public void onPlayerQuit(PlayerQuitEvent event) {
+      UUID uuid = event.getPlayer().getUniqueId();
+      if (this.pendingAuth.containsKey(uuid)) {
+         Bukkit.getScheduler().cancelTask((Integer)this.authTaskMap.get(uuid));
+         this.authTaskMap.remove(uuid);
+         this.pendingAuth.remove(uuid);
+      }
+
    }
 
    public void onEnable() {
@@ -55,10 +67,10 @@ public class AuthPlugin extends JavaPlugin implements Listener {
             String line;
             try {
                while((line = reader.readLine()) != null) {
-                  String[] parts = line.split(",");
-                  String indexNumber = parts[0].trim();
-                  String roomNumber = parts[1].trim();
-                  this.residents.put(indexNumber, roomNumber);
+                  String room = line.trim().toLowerCase().replace(" ", "");
+                  if (!room.isEmpty()) {
+                     this.validRooms.add(room);
+                  }
                }
             } catch (Throwable var8) {
                try {
@@ -100,20 +112,15 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       final Player player = event.getPlayer();
       if (!this.authenticatedPlayers.contains(player.getUniqueId())) {
          this.pendingAuth.put(player.getUniqueId(), new AuthPlugin.AuthData());
-         player.sendMessage(String.valueOf(ChatColor.YELLOW) + "Witaj! Kliknij 't' i wpisz swoje imię, przykładowo: Gertruda (duża litera pełne imię)");
+         player.sendMessage(String.valueOf(ChatColor.YELLOW) + "Witaj! Kliknij 't' i podaj pok\u00F3j oraz opcjonalnie imie, np. 1010B2 Kamil");
          int taskId = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
             public void run() {
                if (AuthPlugin.this.pendingAuth.containsKey(player.getUniqueId())) {
-                  AuthPlugin.AuthData authData = (AuthPlugin.AuthData)AuthPlugin.this.pendingAuth.get(player.getUniqueId());
-                  if (authData.studentName == null) {
-                     player.sendMessage(String.valueOf(ChatColor.YELLOW) + "Witaj! Kliknij 't' i wpisz swoje imię, przykładowo: Gertruda (duża litera pełne imię)");
-                  } else if (authData.roomNumber == null) {
-                     player.sendMessage(String.valueOf(ChatColor.YELLOW) + "Proszę podaj swój numer pokoju: Kliknij znowu 't' i tym razem wpisz swój numer pokoju: przykład '112a' (mała literka)");
-                  }
+                  player.sendMessage(String.valueOf(ChatColor.YELLOW) + "Wpisz pok\u00F3j oraz opcjonalnie imie, np. 1010B2 Kamil");
                }
 
             }
-         }, 0L, 100L).getTaskId();
+         }, 20L, 40L).getTaskId();
          this.authTaskMap.put(player.getUniqueId(), taskId);
       }
 
@@ -130,28 +137,29 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          if (message.equalsIgnoreCase("reset")) {
             authData.studentName = null;
             authData.roomNumber = null;
-            player.sendMessage(String.valueOf(ChatColor.YELLOW) + "Resetowano proces uwierzytelniania. Proszę podaj swoje imie:");
+            player.sendMessage(String.valueOf(ChatColor.YELLOW) + "Resetowano proces uwierzytelniania. Wpisz pok\u00F3j oraz opcjonalnie imie, np. 1010B2 Kamil");
             return;
          }
 
-         if (authData.studentName == null) {
-            authData.studentName = message;
-            player.sendMessage(String.valueOf(ChatColor.YELLOW) + "Proszę podaj swój numer pokoju:");
-         } else if (authData.roomNumber == null) {
-            authData.roomNumber = message;
-            String expectedRoom = (String)this.residents.get(authData.studentName);
-            if (expectedRoom != null && expectedRoom.equalsIgnoreCase(authData.roomNumber)) {
+         if (authData.roomNumber == null) {
+            String[] parts = message.split("\\s+", 2);
+            String roomInput = parts[0].toLowerCase().replace(" ", "");
+            authData.roomNumber = roomInput;
+            if (parts.length > 1) {
+               authData.studentName = parts[1];
+            }
+            if (AuthPlugin.this.validRooms.contains(roomInput)) {
                Bukkit.getScheduler().runTask(this, () -> {
                   this.authenticatedPlayers.add(uuid);
                   this.pendingAuth.remove(uuid);
-                  player.sendMessage(String.valueOf(ChatColor.GREEN) + "Uwierzytelnienie zakończone sukcesem! Miłej gry.");
+                  player.sendMessage(String.valueOf(ChatColor.GREEN) + "Uwierzytelnienie zako\u0144czone sukcesem! Mi\u0142ej gry.");
                   this.savePlayerData(player, authData);
                   Bukkit.getScheduler().cancelTask((Integer)this.authTaskMap.get(uuid));
                   this.authTaskMap.remove(uuid);
                });
             } else {
                Bukkit.getScheduler().runTask(this, () -> {
-                  player.sendMessage(String.valueOf(ChatColor.RED) + "Niepoprawne dane. Jeśli chcesz spróbować ponownie, wpisz 'reset', lub jeśli wpisujesz poprawne dane, lub nie mieszkasz w DS1 a chcesz grać, napisz swoje dane itp na rm.ds1@pg.edu.pl");
+                  player.sendMessage(String.valueOf(ChatColor.RED) + "Niepoprawne dane. Jeśli chcesz spr\u00F3bowa\u0107 ponownie, wpisz 'reset', lub je\u015Bli wpisujesz poprawne dane, lub nie mieszkasz w DS1 a chcesz gra\u0107, napisz swoje dane itp na rm.ds1@pg.edu.pl");
                });
             }
          }
@@ -165,7 +173,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
 
          try {
             String var10000 = player.getName();
-            String line = var10000 + "," + player.getAddress().getAddress().getHostAddress() + "," + authData.studentName + "," + authData.roomNumber;
+            String line = var10000 + "," + player.getAddress().getAddress().getHostAddress() + "," + (authData.studentName != null ? authData.studentName : "") + "," + authData.roomNumber;
             writer.write(line);
             writer.newLine();
          } catch (Throwable var7) {

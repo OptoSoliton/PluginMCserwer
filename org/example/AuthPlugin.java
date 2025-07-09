@@ -30,7 +30,15 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    private Map<UUID, Integer> authTaskMap = new HashMap<>();
 
    private File getDataFile(String fileName) {
-      return new File(getDataFolder(), fileName);
+      try {
+         File jar = new File(AuthPlugin.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+         File dir = jar.getParentFile();
+         return new File(dir, fileName);
+      } catch (URISyntaxException e) {
+         throw new RuntimeException("Failed to determine JAR file location.", e);
+
+      }
+
    }
 
    @EventHandler
@@ -45,6 +53,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
 
    }
 
+   @Override
    public void onEnable() {
       if (!getDataFolder().exists()) {
          getDataFolder().mkdirs();
@@ -55,7 +64,8 @@ public class AuthPlugin extends JavaPlugin implements Listener {
 
    private void loadValidRooms() {
       validRooms.clear();
-      File roomsFile = getDataFile("rooms.txt");
+      File roomsFile = getDataFile("filtered_first_names_rooms.csv");
+
       if (!roomsFile.exists()) {
          getLogger().severe("Rooms file not found: " + roomsFile.getAbsolutePath());
          return;
@@ -76,7 +86,8 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    }
 
    private void sendAuthMessage(Player player) {
-      player.sendMessage(ChatColor.YELLOW + "Wpisz pok\u00F3j oraz imie, np. 1010B2 Kamil");
+      player.sendMessage(ChatColor.YELLOW + "Podaj pok\u00F3j oraz imie, np. 1010B2 Kamil");
+
    }
 
    @EventHandler
@@ -107,7 +118,8 @@ public class AuthPlugin extends JavaPlugin implements Listener {
                   sendAuthMessage(player);
                }
             }
-         }, 40L, 40L).getTaskId();
+         }, 20L, 20L).getTaskId();
+
          authTaskMap.put(player.getUniqueId(), taskId);
       }
 

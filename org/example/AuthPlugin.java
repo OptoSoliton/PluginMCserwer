@@ -30,14 +30,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    private Map<UUID, Integer> authTaskMap = new HashMap<>();
 
    private File getDataFile(String fileName) {
-      try {
-         File jar = new File(AuthPlugin.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-         File dir = jar.getParentFile();
-         return new File(dir, fileName);
-      } catch (URISyntaxException e) {
-         throw new RuntimeException("Failed to determine JAR file location.", e);
-
-      }
+      return new File(getDataFolder(), fileName);
 
    }
 
@@ -65,11 +58,11 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    private void loadValidRooms() {
       validRooms.clear();
       File roomsFile = getDataFile("filtered_first_names_rooms.csv");
-
       if (!roomsFile.exists()) {
          getLogger().severe("Rooms file not found: " + roomsFile.getAbsolutePath());
          return;
       }
+
 
       try (BufferedReader reader = new BufferedReader(new FileReader(roomsFile))) {
          String line;

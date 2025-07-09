@@ -1,0 +1,6 @@
+name: AuthPlugin
+version: 1.0
+main: org.example.AuthPlugin
+api-version: 1.13
+description: A simple authentication plugin for DS1.
+author: WiktorCzetyrbok

@@ -31,6 +31,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
 
    private File getDataFile(String fileName) {
       return new File(getDataFolder(), fileName);
+
    }
 
    @EventHandler
@@ -62,6 +63,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          return;
       }
 
+
       try (BufferedReader reader = new BufferedReader(new FileReader(roomsFile))) {
          String line;
          while ((line = reader.readLine()) != null) {
@@ -78,6 +80,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
 
    private void sendAuthMessage(Player player) {
       player.sendMessage(ChatColor.YELLOW + "Podaj pok\u00F3j oraz imie, np. 1010B2 Kamil");
+
    }
 
    @EventHandler
@@ -109,6 +112,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
                }
             }
          }, 20L, 20L).getTaskId();
+
          authTaskMap.put(player.getUniqueId(), taskId);
       }
 

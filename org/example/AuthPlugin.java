@@ -1,5 +1,4 @@
 package org.example;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -64,6 +63,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          return;
       }
 
+
       try (BufferedReader reader = new BufferedReader(new FileReader(roomsFile))) {
          String line;
          while ((line = reader.readLine()) != null) {
@@ -104,12 +104,18 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       } catch (IOException e) {
          getLogger().severe("Failed to read player data.");
          e.printStackTrace();
+
       }
       return false;
    }
 
    private void sendAuthMessage(Player player) {
       player.sendMessage(ChatColor.YELLOW + "Podaj pok\u00F3j oraz imi\u0119, np. 1010B2 Kamil");
+   }
+
+   private void sendAuthMessage(Player player) {
+      player.sendMessage(ChatColor.YELLOW + "Podaj pok\u00F3j oraz imie, np. 1010B2 Kamil");
+
    }
 
    @EventHandler
@@ -134,6 +140,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       if (!authenticatedPlayers.contains(player.getUniqueId())) {
          pendingAuth.add(player.getUniqueId());
          firstAttemptDone.remove(player.getUniqueId());
+
          sendAuthMessage(player);
          int taskId = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
             public void run() {
@@ -178,6 +185,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
 
          if (validRooms.contains(roomInput)) {
             Bukkit.getScheduler().runTask(this, () -> completeLogin(player, uuid, roomInput, nameInput));
+
          } else {
             Bukkit.getScheduler().runTask(this, () -> {
                player.sendMessage(ChatColor.RED + "Niepoprawny pok\u00F3j. Jeśli chcesz spr\u00F3bowa\u0107 ponownie, wpisz 'reset'. Jeśli masz problem, napisz na rm.ds1@pg.edu.pl");
@@ -199,6 +207,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       Integer task = authTaskMap.remove(uuid);
       if (task != null) {
          Bukkit.getScheduler().cancelTask(task);
+
       }
    }
 
@@ -214,4 +223,5 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       }
 
    }
+
 }

@@ -1,5 +1,4 @@
 package org.example;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -32,6 +31,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    private Map<UUID, Integer> authTaskMap = new HashMap<>();
    private Set<UUID> firstAttemptDone = new HashSet<>();
    private IP2Location ip2Location = new IP2Location();
+
 
    private File getDataFile(String fileName) {
       return new File(getDataFolder(), fileName);
@@ -85,6 +85,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          getLogger().severe("Rooms file not found: " + roomsFile.getAbsolutePath());
          return;
       }
+
 
       try (BufferedReader reader = new BufferedReader(new FileReader(roomsFile))) {
          String line;
@@ -153,6 +154,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          getLogger().warning("IP2Location lookup failed for " + ip);
       }
       return "";
+
    }
 
    @EventHandler
@@ -177,6 +179,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       if (!authenticatedPlayers.contains(player.getUniqueId())) {
          pendingAuth.add(player.getUniqueId());
          firstAttemptDone.remove(player.getUniqueId());
+
          sendAuthMessage(player);
          int taskId = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
             public void run() {
@@ -221,6 +224,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
 
          if (validRooms.contains(roomInput)) {
             Bukkit.getScheduler().runTask(this, () -> completeLogin(player, uuid, roomInput, nameInput));
+
          } else {
             Bukkit.getScheduler().runTask(this, () -> {
                player.sendMessage(ChatColor.RED + "Niepoprawny pok\u00F3j. Jeśli chcesz spr\u00F3bowa\u0107 ponownie, wpisz 'reset'. Jeśli masz problem, napisz na rm.ds1@pg.edu.pl");
@@ -241,11 +245,13 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       if (!details.isEmpty()) {
          player.sendMessage(ChatColor.GRAY + details);
       }
+
       player.sendMessage(ChatColor.AQUA + "Mi\u0142ej gry " + displayName + " :)");
       savePlayerData(player, room, name);
       Integer task = authTaskMap.remove(uuid);
       if (task != null) {
          Bukkit.getScheduler().cancelTask(task);
+
       }
    }
 
@@ -261,4 +267,5 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       }
 
    }
+
 }

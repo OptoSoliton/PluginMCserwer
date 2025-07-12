@@ -1,5 +1,4 @@
 package org.example;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -34,6 +33,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    private Map<UUID, Integer> authTaskMap = new HashMap<>();
    private Set<UUID> firstAttemptDone = new HashSet<>();
    private IP2Location ip2Location = new IP2Location();
+
 
    private File getDataFile(String fileName) {
       return new File(getDataFolder(), fileName);
@@ -87,6 +87,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          getLogger().severe("Rooms file not found: " + roomsFile.getAbsolutePath());
          return;
       }
+
 
       try (BufferedReader reader = new BufferedReader(new FileReader(roomsFile))) {
          String line;
@@ -155,11 +156,13 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          } else {
             lines.add(ChatColor.GRAY + "szczeg\u00F3\u0142owe dane w low level logach");
             getLogger().info("Lookup for " + ip + " status: " + r.getStatus());
+
          }
       } catch (Exception e) {
          getLogger().warning("IP2Location lookup failed for " + ip);
       }
       return lines;
+
    }
 
    @EventHandler
@@ -184,6 +187,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       if (!authenticatedPlayers.contains(player.getUniqueId())) {
          pendingAuth.add(player.getUniqueId());
          firstAttemptDone.remove(player.getUniqueId());
+
          sendAuthMessage(player);
          int taskId = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
             public void run() {
@@ -234,6 +238,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
         }
 
         Bukkit.getScheduler().runTask(this, () -> completeLogin(player, uuid, roomInput, nameInput));
+
       }
 
    }
@@ -270,8 +275,8 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       } catch (IOException e) {
          getLogger().severe("Failed to save player data.");
          e.printStackTrace();
-      }
 
+      }
    }
 
    private void showPreviousData(Player player) {
@@ -289,7 +294,9 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          }
       } catch (IOException e) {
          getLogger().severe("Failed to read previous data for player " + player.getName());
+
       }
 
    }
+
 }

@@ -145,23 +145,31 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       try {
          IPResult r = ip2Location.IPQuery(ip);
          if ("OK".equalsIgnoreCase(r.getStatus())) {
-            lines.add(ChatColor.GRAY + "Kraj: " + ChatColor.WHITE + r.getCountryLong());
-            lines.add(ChatColor.GRAY + "Region: " + ChatColor.WHITE + r.getRegion());
-            lines.add(ChatColor.GRAY + "Miasto: " + ChatColor.WHITE + r.getCity());
-            lines.add(ChatColor.GRAY + "ISP: " + ChatColor.WHITE + r.getISP());
-            lines.add(ChatColor.GRAY + "Domena: " + ChatColor.WHITE + r.getDomain());
-            lines.add(ChatColor.GRAY + "Kod pocztowy: " + ChatColor.WHITE + r.getZipCode());
-            lines.add(ChatColor.GRAY + "Strefa: " + ChatColor.WHITE + r.getTimeZone());
-            lines.add(ChatColor.GRAY + "Pr\u0119dko\u015B\u0107: " + ChatColor.WHITE + r.getNetSpeed());
+            lines.add(ChatColor.GRAY + "Kraj: " + ChatColor.WHITE + sanitizeIpField(r.getCountryLong()));
+            lines.add(ChatColor.GRAY + "Region: " + ChatColor.WHITE + sanitizeIpField(r.getRegion()));
+            lines.add(ChatColor.GRAY + "Miasto: " + ChatColor.WHITE + sanitizeIpField(r.getCity()));
+            lines.add(ChatColor.GRAY + "ISP: " + ChatColor.WHITE + sanitizeIpField(r.getISP()));
+            lines.add(ChatColor.GRAY + "Domena: " + ChatColor.WHITE + sanitizeIpField(r.getDomain()));
+            lines.add(ChatColor.GRAY + "Kod pocztowy: " + ChatColor.WHITE + sanitizeIpField(r.getZipCode()));
+            lines.add(ChatColor.GRAY + "Strefa: " + ChatColor.WHITE + sanitizeIpField(r.getTimeZone()));
+            lines.add(ChatColor.GRAY + "Pr\u0119dko\u015B\u0107: " + ChatColor.WHITE + sanitizeIpField(r.getNetSpeed()));
          } else {
             lines.add(ChatColor.GRAY + "szczeg\u00F3\u0142owe dane w low level logach");
             getLogger().info("Lookup for " + ip + " status: " + r.getStatus());
-
          }
       } catch (Exception e) {
          getLogger().warning("IP2Location lookup failed for " + ip);
       }
       return lines;
+   }
+
+   private String sanitizeIpField(String value) {
+      if (value == null || value.trim().isEmpty() || value.equalsIgnoreCase("Not_Supported")
+            || value.equalsIgnoreCase("Not supported") || value.equalsIgnoreCase("N/A")
+            || value.equalsIgnoreCase("-")) {
+         return "szczeg\u00F3\u0142owe dane w low level logach";
+      }
+      return value;
 
    }
 
@@ -263,6 +271,19 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       Integer task = authTaskMap.remove(uuid);
       if (task != null) {
          Bukkit.getScheduler().cancelTask(task);
+      }
+   }
+
+   private void savePlayerData(Player player, String room, String name) {
+      File dataFile = getDataFile("authenticated_players.txt");
+      try (BufferedWriter writer = new BufferedWriter(new FileWriter(dataFile, true))) {
+         String line = player.getName() + "," + player.getAddress().getAddress().getHostAddress() + "," + room + "," + name;
+         writer.write(line);
+         writer.newLine();
+      } catch (IOException e) {
+         getLogger().severe("Failed to save player data.");
+         e.printStackTrace();
+
       }
    }
 

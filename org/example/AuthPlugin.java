@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import com.ip2location.IP2Location;
+import com.ip2location.IPResult;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -28,6 +30,8 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    private Set<String> validRooms = new HashSet<>();
    private Map<UUID, Integer> authTaskMap = new HashMap<>();
    private Set<UUID> firstAttemptDone = new HashSet<>();
+   private IP2Location ip2Location = new IP2Location();
+
 
    private File getDataFile(String fileName) {
       return new File(getDataFolder(), fileName);
@@ -52,7 +56,26 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          getDataFolder().mkdirs();
       }
       this.loadValidRooms();
+      try {
+         File dbFile = getDataFile("IP2LOCATION-LITE-DB11.BIN");
+         if (dbFile.exists()) {
+            ip2Location.Open(dbFile.getAbsolutePath());
+         } else {
+            getLogger().warning("IP2Location DB not found: " + dbFile.getAbsolutePath());
+         }
+      } catch (Exception e) {
+         getLogger().warning("Failed to load IP2Location DB.");
+      }
       this.getServer().getPluginManager().registerEvents(this, this);
+   }
+
+   @Override
+   public void onDisable() {
+      try {
+         ip2Location.Close();
+      } catch (Exception e) {
+         // ignore
+      }
    }
 
    private void loadValidRooms() {
@@ -104,7 +127,6 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       } catch (IOException e) {
          getLogger().severe("Failed to read player data.");
          e.printStackTrace();
-
       }
       return false;
    }
@@ -113,8 +135,25 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       player.sendMessage(ChatColor.YELLOW + "Podaj pok\u00F3j oraz imi\u0119, np. 1010B2 Kamil");
    }
 
-   private void sendAuthMessage(Player player) {
-      player.sendMessage(ChatColor.YELLOW + "Podaj pok\u00F3j oraz imie, np. 1010B2 Kamil");
+   private String lookupIpInfo(String ip) {
+      try {
+         IPResult r = ip2Location.IPQuery(ip);
+         if ("OK".equalsIgnoreCase(r.getStatus())) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Kraj: ").append(r.getCountryLong());
+            sb.append(", Region: ").append(r.getRegion());
+            sb.append(", Miasto: ").append(r.getCity());
+            sb.append(", ISP: ").append(r.getISP());
+            sb.append(", Domena: ").append(r.getDomain());
+            sb.append(", Kod pocztowy: ").append(r.getZipCode());
+            sb.append(", Strefa: ").append(r.getTimeZone());
+            sb.append(", Predkosc: ").append(r.getNetSpeed());
+            return sb.toString();
+         }
+      } catch (Exception e) {
+         getLogger().warning("IP2Location lookup failed for " + ip);
+      }
+      return "";
 
    }
 
@@ -202,6 +241,11 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       String ip = player.getAddress().getAddress().getHostAddress();
       String displayName = name.isEmpty() ? player.getName() : name;
       player.sendMessage(ChatColor.GREEN + "Twoje IP: " + ip);
+      String details = lookupIpInfo(ip);
+      if (!details.isEmpty()) {
+         player.sendMessage(ChatColor.GRAY + details);
+      }
+
       player.sendMessage(ChatColor.AQUA + "Mi\u0142ej gry " + displayName + " :)");
       savePlayerData(player, room, name);
       Integer task = authTaskMap.remove(uuid);

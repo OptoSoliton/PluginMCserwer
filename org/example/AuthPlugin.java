@@ -12,6 +12,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -132,28 +134,34 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    }
 
    private void sendAuthMessage(Player player) {
-      player.sendMessage(ChatColor.YELLOW + "Podaj pok\u00F3j oraz imi\u0119, np. 1010B2 Kamil");
+      String msg = ChatColor.GOLD + "Podaj pok\u00F3j " + ChatColor.YELLOW + "oraz "
+            + ChatColor.AQUA + "imi\u0119" + ChatColor.GOLD + ", np. "
+            + ChatColor.GREEN + "1010B2 Kamil";
+      player.sendMessage(msg);
    }
 
-   private String lookupIpInfo(String ip) {
+   private List<String> lookupIpInfo(String ip) {
+      List<String> lines = new ArrayList<>();
       try {
          IPResult r = ip2Location.IPQuery(ip);
          if ("OK".equalsIgnoreCase(r.getStatus())) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("Kraj: ").append(r.getCountryLong());
-            sb.append(", Region: ").append(r.getRegion());
-            sb.append(", Miasto: ").append(r.getCity());
-            sb.append(", ISP: ").append(r.getISP());
-            sb.append(", Domena: ").append(r.getDomain());
-            sb.append(", Kod pocztowy: ").append(r.getZipCode());
-            sb.append(", Strefa: ").append(r.getTimeZone());
-            sb.append(", Predkosc: ").append(r.getNetSpeed());
-            return sb.toString();
+            lines.add(ChatColor.GRAY + "Kraj: " + ChatColor.WHITE + r.getCountryLong());
+            lines.add(ChatColor.GRAY + "Region: " + ChatColor.WHITE + r.getRegion());
+            lines.add(ChatColor.GRAY + "Miasto: " + ChatColor.WHITE + r.getCity());
+            lines.add(ChatColor.GRAY + "ISP: " + ChatColor.WHITE + r.getISP());
+            lines.add(ChatColor.GRAY + "Domena: " + ChatColor.WHITE + r.getDomain());
+            lines.add(ChatColor.GRAY + "Kod pocztowy: " + ChatColor.WHITE + r.getZipCode());
+            lines.add(ChatColor.GRAY + "Strefa: " + ChatColor.WHITE + r.getTimeZone());
+            lines.add(ChatColor.GRAY + "Pr\u0119dko\u015B\u0107: " + ChatColor.WHITE + r.getNetSpeed());
+         } else {
+            lines.add(ChatColor.GRAY + "szczeg\u00F3\u0142owe dane w low level logach");
+            getLogger().info("Lookup for " + ip + " status: " + r.getStatus());
+
          }
       } catch (Exception e) {
          getLogger().warning("IP2Location lookup failed for " + ip);
       }
-      return "";
+      return lines;
 
    }
 
@@ -210,26 +218,27 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          String roomInput = parts[0].toLowerCase().replace(" ", "");
          String nameInput = parts.length > 1 ? parts[1].trim() : "";
 
-         if (!firstAttemptDone.contains(uuid)) {
-            if (recordExists(player, roomInput, nameInput) && validRooms.contains(roomInput)) {
-               Bukkit.getScheduler().runTask(this, () -> completeLogin(player, uuid, roomInput, nameInput));
+        if (!validRooms.contains(roomInput)) {
+            Bukkit.getScheduler().runTask(this, () -> {
+                player.sendMessage(ChatColor.RED + "Niepoprawny pok\u00F3j. Je\u015bli chcesz spr\u00F3bowa\u0107 ponownie, wpisz 'reset'. Je\u015bli masz problem, napisz na rm.ds1@pg.edu.pl");
+            });
+            return;
+        }
+
+        if (!firstAttemptDone.contains(uuid)) {
+            if (recordExists(player, roomInput, nameInput)) {
+                Bukkit.getScheduler().runTask(this, () -> completeLogin(player, uuid, roomInput, nameInput));
             } else {
-               firstAttemptDone.add(uuid);
-               Bukkit.getScheduler().runTask(this, () -> {
-                  player.sendMessage(ChatColor.RED + "Hej anio\u0142ku, to mia\u0142o by\u0107 twoje imie... Dawaj jeszcze raz :)");
-               });
+                firstAttemptDone.add(uuid);
+                Bukkit.getScheduler().runTask(this, () -> {
+                    player.sendMessage(ChatColor.RED + "Hej anio\u0142ku, to mia\u0142o by\u0107 twoje imie... Dawaj jeszcze raz :)");
+                });
             }
             return;
-         }
+        }
 
-         if (validRooms.contains(roomInput)) {
-            Bukkit.getScheduler().runTask(this, () -> completeLogin(player, uuid, roomInput, nameInput));
+        Bukkit.getScheduler().runTask(this, () -> completeLogin(player, uuid, roomInput, nameInput));
 
-         } else {
-            Bukkit.getScheduler().runTask(this, () -> {
-               player.sendMessage(ChatColor.RED + "Niepoprawny pok\u00F3j. Jeśli chcesz spr\u00F3bowa\u0107 ponownie, wpisz 'reset'. Jeśli masz problem, napisz na rm.ds1@pg.edu.pl");
-            });
-         }
       }
 
    }
@@ -240,18 +249,20 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       firstAttemptDone.remove(uuid);
       String ip = player.getAddress().getAddress().getHostAddress();
       String displayName = name.isEmpty() ? player.getName() : name;
-      player.sendMessage(ChatColor.GREEN + "Twoje IP: " + ip);
-      String details = lookupIpInfo(ip);
-      if (!details.isEmpty()) {
-         player.sendMessage(ChatColor.GRAY + details);
+      player.sendMessage(ChatColor.GREEN + "Twoje IP: " + ChatColor.WHITE + ip);
+
+      for (String line : lookupIpInfo(ip)) {
+         player.sendMessage(line);
       }
 
-      player.sendMessage(ChatColor.AQUA + "Mi\u0142ej gry " + displayName + " :)");
+      showPreviousData(player);
+
+      player.sendMessage(ChatColor.AQUA + "Mi\u0142ej gry " + ChatColor.GOLD + displayName + ChatColor.AQUA + " :)");
+
       savePlayerData(player, room, name);
       Integer task = authTaskMap.remove(uuid);
       if (task != null) {
          Bukkit.getScheduler().cancelTask(task);
-
       }
    }
 
@@ -264,6 +275,26 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       } catch (IOException e) {
          getLogger().severe("Failed to save player data.");
          e.printStackTrace();
+
+      }
+   }
+
+   private void showPreviousData(Player player) {
+      File dataFile = getDataFile("authenticated_players.txt");
+      if (!dataFile.exists()) {
+         return;
+      }
+      try (BufferedReader reader = new BufferedReader(new FileReader(dataFile))) {
+         String line;
+         while ((line = reader.readLine()) != null) {
+            String[] parts = line.split(",");
+            if (parts.length >= 4 && parts[0].equalsIgnoreCase(player.getName())) {
+               player.sendMessage(ChatColor.LIGHT_PURPLE + "Zapis: " + ChatColor.WHITE + line);
+            }
+         }
+      } catch (IOException e) {
+         getLogger().severe("Failed to read previous data for player " + player.getName());
+
       }
 
    }

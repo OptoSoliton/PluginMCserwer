@@ -1,5 +1,4 @@
 package org.example;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -28,10 +27,10 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    private Set<UUID> pendingAuth = new HashSet<>();
    private Set<String> validRooms = new HashSet<>();
    private Map<UUID, Integer> authTaskMap = new HashMap<>();
+   private Set<UUID> firstAttemptDone = new HashSet<>();
 
    private File getDataFile(String fileName) {
       return new File(getDataFolder(), fileName);
-
    }
 
    @EventHandler
@@ -43,6 +42,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
             Bukkit.getScheduler().cancelTask(task);
          }
       }
+      firstAttemptDone.remove(uuid);
 
    }
 
@@ -78,6 +78,41 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       }
    }
 
+   private boolean recordExists(Player player, String room, String name) {
+      File dataFile = getDataFile("authenticated_players.txt");
+      if (!dataFile.exists()) {
+         return false;
+      }
+      String ip = player.getAddress().getAddress().getHostAddress();
+      String nick = player.getName();
+      try (BufferedReader reader = new BufferedReader(new FileReader(dataFile))) {
+         String line;
+         while ((line = reader.readLine()) != null) {
+            String[] parts = line.split(",");
+            if (parts.length >= 4) {
+               String nickStored = parts[0].trim();
+               String ipStored = parts[1].trim();
+               String roomStored = parts[2].trim();
+               String nameStored = parts[3].trim();
+               if (nickStored.equalsIgnoreCase(nick) && ipStored.equals(ip)
+                     && roomStored.equalsIgnoreCase(room)
+                     && nameStored.equalsIgnoreCase(name)) {
+                  return true;
+               }
+            }
+         }
+      } catch (IOException e) {
+         getLogger().severe("Failed to read player data.");
+         e.printStackTrace();
+
+      }
+      return false;
+   }
+
+   private void sendAuthMessage(Player player) {
+      player.sendMessage(ChatColor.YELLOW + "Podaj pok\u00F3j oraz imi\u0119, np. 1010B2 Kamil");
+   }
+
    private void sendAuthMessage(Player player) {
       player.sendMessage(ChatColor.YELLOW + "Podaj pok\u00F3j oraz imie, np. 1010B2 Kamil");
 
@@ -104,6 +139,8 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       final Player player = event.getPlayer();
       if (!authenticatedPlayers.contains(player.getUniqueId())) {
          pendingAuth.add(player.getUniqueId());
+         firstAttemptDone.remove(player.getUniqueId());
+
          sendAuthMessage(player);
          int taskId = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
             public void run() {
@@ -111,8 +148,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
                   sendAuthMessage(player);
                }
             }
-         }, 20L, 20L).getTaskId();
-
+         }, 10L, 10L).getTaskId();
          authTaskMap.put(player.getUniqueId(), taskId);
       }
 
@@ -126,25 +162,30 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          event.setCancelled(true);
          String message = event.getMessage().trim();
          if (message.equalsIgnoreCase("reset")) {
+            firstAttemptDone.remove(uuid);
             sendAuthMessage(player);
             return;
          }
 
          String[] parts = message.split("\\s+", 2);
          String roomInput = parts[0].toLowerCase().replace(" ", "");
-         String nameInput = parts.length > 1 ? parts[1] : "";
+         String nameInput = parts.length > 1 ? parts[1].trim() : "";
+
+         if (!firstAttemptDone.contains(uuid)) {
+            if (recordExists(player, roomInput, nameInput) && validRooms.contains(roomInput)) {
+               Bukkit.getScheduler().runTask(this, () -> completeLogin(player, uuid, roomInput, nameInput));
+            } else {
+               firstAttemptDone.add(uuid);
+               Bukkit.getScheduler().runTask(this, () -> {
+                  player.sendMessage(ChatColor.RED + "Hej anio\u0142ku, to mia\u0142o by\u0107 twoje imie... Dawaj jeszcze raz :)");
+               });
+            }
+            return;
+         }
 
          if (validRooms.contains(roomInput)) {
-            Bukkit.getScheduler().runTask(this, () -> {
-               authenticatedPlayers.add(uuid);
-               pendingAuth.remove(uuid);
-               player.sendMessage(ChatColor.GREEN + "Uwierzytelnienie zako\u0144czone sukcesem! Mi\u0142ej gry.");
-               savePlayerData(player, roomInput, nameInput);
-               Integer task = authTaskMap.remove(uuid);
-               if (task != null) {
-                  Bukkit.getScheduler().cancelTask(task);
-               }
-            });
+            Bukkit.getScheduler().runTask(this, () -> completeLogin(player, uuid, roomInput, nameInput));
+
          } else {
             Bukkit.getScheduler().runTask(this, () -> {
                player.sendMessage(ChatColor.RED + "Niepoprawny pok\u00F3j. Jeśli chcesz spr\u00F3bowa\u0107 ponownie, wpisz 'reset'. Jeśli masz problem, napisz na rm.ds1@pg.edu.pl");
@@ -152,6 +193,22 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          }
       }
 
+   }
+
+   private void completeLogin(Player player, UUID uuid, String room, String name) {
+      authenticatedPlayers.add(uuid);
+      pendingAuth.remove(uuid);
+      firstAttemptDone.remove(uuid);
+      String ip = player.getAddress().getAddress().getHostAddress();
+      String displayName = name.isEmpty() ? player.getName() : name;
+      player.sendMessage(ChatColor.GREEN + "Twoje IP: " + ip);
+      player.sendMessage(ChatColor.AQUA + "Mi\u0142ej gry " + displayName + " :)");
+      savePlayerData(player, room, name);
+      Integer task = authTaskMap.remove(uuid);
+      if (task != null) {
+         Bukkit.getScheduler().cancelTask(task);
+
+      }
    }
 
    private void savePlayerData(Player player, String room, String name) {
@@ -166,4 +223,5 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       }
 
    }
+
 }

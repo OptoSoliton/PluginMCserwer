@@ -24,6 +24,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class AuthPlugin extends JavaPlugin implements Listener {
@@ -32,6 +34,8 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    private Set<String> validRooms = new HashSet<>();
    private Map<UUID, Integer> authTaskMap = new HashMap<>();
    private Set<UUID> firstAttemptDone = new HashSet<>();
+   private Set<UUID> invinciblePlayers = new HashSet<>();
+   private Map<UUID, Integer> invincibleTaskMap = new HashMap<>();
    private IP2Location ip2Location = new IP2Location();
 
 
@@ -49,6 +53,12 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          }
       }
       firstAttemptDone.remove(uuid);
+      Integer invTask = invincibleTaskMap.remove(uuid);
+      if (invTask != null) {
+         Bukkit.getScheduler().cancelTask(invTask);
+      }
+      invinciblePlayers.remove(uuid);
+
 
    }
 
@@ -140,6 +150,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       player.sendMessage(msg);
    }
 
+
    private List<String> lookupIpInfo(String ip) {
       List<String> lines = new ArrayList<>();
       try {
@@ -185,6 +196,18 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    public void onPlayerInteract(PlayerInteractEvent event) {
       if (pendingAuth.contains(event.getPlayer().getUniqueId())) {
          event.setCancelled(true);
+      }
+
+   }
+
+   @EventHandler
+   public void onEntityDamage(EntityDamageEvent event) {
+      if (event.getEntity() instanceof Player) {
+         Player player = (Player) event.getEntity();
+         UUID uuid = player.getUniqueId();
+         if (pendingAuth.contains(uuid) || invinciblePlayers.contains(uuid)) {
+            event.setCancelled(true);
+         }
       }
 
    }
@@ -272,6 +295,31 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       if (task != null) {
          Bukkit.getScheduler().cancelTask(task);
       }
+
+      startInvincibilityCountdown(player);
+   }
+
+   private void startInvincibilityCountdown(final Player player) {
+      final UUID uuid = player.getUniqueId();
+      invinciblePlayers.add(uuid);
+      player.sendMessage(ChatColor.YELLOW + "Nieśmiertelność po logowaniu zniknie za 5...");
+      int taskId = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
+         int time = 4;
+         @Override
+         public void run() {
+            if (time > 0) {
+               player.sendMessage(ChatColor.YELLOW + "Nieśmiertelność po logowaniu zniknie za " + time + "...");
+               time--;
+            } else {
+               invinciblePlayers.remove(uuid);
+               Integer id = invincibleTaskMap.remove(uuid);
+               if (id != null) {
+                  Bukkit.getScheduler().cancelTask(id);
+               }
+            }
+         }
+      }, 20L, 20L).getTaskId();
+      invincibleTaskMap.put(uuid, taskId);
    }
 
    private void savePlayerData(Player player, String room, String name) {

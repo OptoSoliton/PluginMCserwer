@@ -1,5 +1,4 @@
 package org.example;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -26,6 +25,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class AuthPlugin extends JavaPlugin implements Listener {
@@ -37,6 +37,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
    private Set<UUID> invinciblePlayers = new HashSet<>();
    private Map<UUID, Integer> invincibleTaskMap = new HashMap<>();
    private IP2Location ip2Location = new IP2Location();
+
 
    private File getDataFile(String fileName) {
       return new File(getDataFolder(), fileName);
@@ -57,6 +58,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          Bukkit.getScheduler().cancelTask(invTask);
       }
       invinciblePlayers.remove(uuid);
+
 
    }
 
@@ -95,6 +97,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          getLogger().severe("Rooms file not found: " + roomsFile.getAbsolutePath());
          return;
       }
+
 
       try (BufferedReader reader = new BufferedReader(new FileReader(roomsFile))) {
          String line;
@@ -147,6 +150,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       player.sendMessage(msg);
    }
 
+
    private List<String> lookupIpInfo(String ip) {
       List<String> lines = new ArrayList<>();
       try {
@@ -177,6 +181,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          return "szczeg\u00F3\u0142owe dane w low level logach";
       }
       return value;
+
    }
 
    @EventHandler
@@ -213,6 +218,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       if (!authenticatedPlayers.contains(player.getUniqueId())) {
          pendingAuth.add(player.getUniqueId());
          firstAttemptDone.remove(player.getUniqueId());
+
          sendAuthMessage(player);
          int taskId = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
             public void run() {
@@ -263,6 +269,7 @@ public class AuthPlugin extends JavaPlugin implements Listener {
         }
 
         Bukkit.getScheduler().runTask(this, () -> completeLogin(player, uuid, roomInput, nameInput));
+
       }
 
    }
@@ -324,8 +331,21 @@ public class AuthPlugin extends JavaPlugin implements Listener {
       } catch (IOException e) {
          getLogger().severe("Failed to save player data.");
          e.printStackTrace();
-      }
 
+      }
+   }
+
+   private void savePlayerData(Player player, String room, String name) {
+      File dataFile = getDataFile("authenticated_players.txt");
+      try (BufferedWriter writer = new BufferedWriter(new FileWriter(dataFile, true))) {
+         String line = player.getName() + "," + player.getAddress().getAddress().getHostAddress() + "," + room + "," + name;
+         writer.write(line);
+         writer.newLine();
+      } catch (IOException e) {
+         getLogger().severe("Failed to save player data.");
+         e.printStackTrace();
+
+      }
    }
 
    private void showPreviousData(Player player) {
@@ -343,7 +363,9 @@ public class AuthPlugin extends JavaPlugin implements Listener {
          }
       } catch (IOException e) {
          getLogger().severe("Failed to read previous data for player " + player.getName());
+
       }
 
    }
+
 }
